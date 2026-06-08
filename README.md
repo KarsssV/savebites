@@ -27,6 +27,10 @@ Role	Email	Password
 Pembeli (buyer)	buyer@savebites.com	buyer123
 Penjual (seller)	seller@savebites.com	seller123
 
+photos:
+Minuman: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80',
+Snack: 'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?auto=format&fit=crop&w=800&q=80',
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
