@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
+import { useRequireAuth } from '@/lib/auth';
+import { addListing, imageForCategory } from '@/lib/store';
 
 const CATEGORIES = ['Roti & Kue', 'Makanan Berat', 'Minuman', 'Sayur & Buah', 'Snack', 'Lainnya'];
 const ALLERGEN_OPTIONS = ['Gandum', 'Susu', 'Telur', 'Kacang', 'Seafood', 'Kedelai'];
@@ -26,6 +28,7 @@ const TIME_OPTIONS = ['30 Menit', '1 Jam', '2 Jam', '3 Jam', '4 Jam', 'Hingga Ma
 
 export default function PostFoodScreen() {
   const router = useRouter();
+  const session = useRequireAuth('seller'); // hanya penjual yang boleh posting
 
   const [form, setForm] = useState({
     title: '',
@@ -76,9 +79,28 @@ export default function PostFoodScreen() {
     form.timeLeft;
 
   const handleSubmit = () => {
-    if (!isFormValid) return;
+    if (!isFormValid || !session) return;
+    addListing({
+      title: form.title.trim(),
+      merchant: session.name,
+      merchantLocation: 'Malang, Jawa Timur',
+      distance: '0 km',
+      rating: 5,
+      reviews: 0,
+      originalPrice: Number(form.originalPrice),
+      discountPrice: Number(form.discountPrice),
+      stock: Number(form.stock) || 1,
+      timeLeft: form.timeLeft,
+      category: form.category,
+      image: imageForCategory(form.category),
+      description: form.description.trim() || 'Makanan surplus yang masih sangat layak konsumsi.',
+      allergens: selectedAllergens,
+      sellerEmail: session.email,
+    });
     setIsSubmitted(true);
   };
+
+  if (!session) return null; // belum login / bukan penjual
 
   if (isSubmitted) {
     return (
@@ -97,10 +119,10 @@ export default function PostFoodScreen() {
             </div>
             <div className="w-full max-w-xs flex flex-col gap-3">
               <button
-                onClick={() => router.push('/home')}
+                onClick={() => router.push('/seller')}
                 className="w-full py-4 bg-primary text-white font-extrabold rounded-2xl shadow-lg shadow-primary/30 hover:opacity-90 transition"
               >
-                Kembali ke Beranda
+                Kembali ke Dasbor
               </button>
               <button
                 onClick={() => { setIsSubmitted(false); setForm({ title: '', category: '', originalPrice: '', discountPrice: '', stock: '', timeLeft: '', description: '' }); setImagePreview(null); setSelectedAllergens([]); }}

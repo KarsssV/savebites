@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -13,36 +13,28 @@ import {
   AlertCircle,
   ShieldCheck
 } from 'lucide-react';
-import { mockListings } from '@/data/mockData';
+import { useRequireAuth } from '@/lib/auth';
+import { useListings } from '@/lib/store';
 
 export default function DetailScreen() {
   const router = useRouter();
+  const session = useRequireAuth('buyer');
+  const listings = useListings();
   const [isFavorite, setIsFavorite] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const [merchantName, setMerchantName] = useState("");
-  const [listingId, setListingId] = useState(1);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
-      const m = searchParams.get('merchant');
-      const idParam = searchParams.get('id');
-      if (m) setMerchantName(m);
-      if (idParam) setListingId(parseInt(idParam, 10));
-    }
-  }, []);
+  if (!session) return null;
 
-  // Ambil data dari mockListings berdasarkan ID, fallback ke item pertama
-  const foundListing = mockListings.find(l => l.id === listingId) || mockListings[0];
+  // Baca parameter URL (klien saja, aman setelah guard).
+  const params = new URLSearchParams(window.location.search);
+  const listingId = Number(params.get('id')) || (listings[0]?.id ?? 1);
+  const foundListing = listings.find(l => l.id === listingId) || listings[0];
+  if (!foundListing) return null;
+  const merchantName = params.get('merchant') || foundListing.merchant;
 
-  // Gabungkan dengan merchant dari URL jika ada (dari peta)
   const data = {
     ...foundListing,
-    merchant: merchantName || foundListing.merchant,
-    merchantLocation: foundListing.merchantLocation,
-    reviews: foundListing.reviews,
-    description: foundListing.description,
-    allergens: foundListing.allergens,
+    merchant: merchantName,
     timeLeft: foundListing.timeLeft + " Menit",
   };
 
@@ -201,7 +193,7 @@ export default function DetailScreen() {
             </div>
 
             <button
-              onClick={() => router.push(`/checkout?qty=${quantity}`)}
+              onClick={() => router.push(`/checkout?id=${data.id}&qty=${quantity}`)}
               className="bg-accent-gradient text-white font-extrabold px-8 py-3.5 rounded-2xl shadow-lg shadow-accent/30 hover:opacity-90 transition transform active:scale-95"
             >
               Selamatkan!

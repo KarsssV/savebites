@@ -1,13 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { login, getSession, homeFor } from '@/lib/auth';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  // Jika sudah login, langsung ke halaman sesuai peran.
+  useEffect(() => {
+    const s = getSession();
+    if (s) router.replace(homeFor(s.role));
+  }, [router]);
+
+  const handleLogin = () => {
+    const session = login(email, password);
+    if (!session) {
+      setError('Email atau kata sandi salah.');
+      return;
+    }
+    router.push(homeFor(session.role));
+  };
 
   return (
     // Perbaikan 1: Ubah items-center menjadi md:items-center agar di HP mulai dari atas dan bisa di-scroll
@@ -54,9 +73,11 @@ export default function LoginScreen() {
             <label className="block text-sm font-bold text-text-primary mb-2">Email</label>
             <div className="flex items-center bg-cream/50 border border-divider rounded-2xl px-4 py-3">
               <Mail className="text-text-muted mr-3" size={20} />
-              <input 
-                type="email" 
+              <input
+                type="email"
                 placeholder="Masukkan emailmu"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(''); }}
                 className="bg-transparent w-full focus:outline-none text-text-primary placeholder:text-text-muted text-sm"
               />
             </div>
@@ -66,9 +87,12 @@ export default function LoginScreen() {
             <label className="block text-sm font-bold text-text-primary mb-2">Kata Sandi</label>
             <div className="flex items-center bg-cream/50 border border-divider rounded-2xl px-4 py-3">
               <Lock className="text-text-muted mr-3" size={20} />
-              <input 
-                type={showPassword ? "text" : "password"} 
+              <input
+                type={showPassword ? "text" : "password"}
                 placeholder="Masukkan kata sandi"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
                 className="bg-transparent w-full focus:outline-none text-text-primary placeholder:text-text-muted text-sm"
               />
               <button onClick={() => setShowPassword(!showPassword)} type="button">
@@ -81,19 +105,33 @@ export default function LoginScreen() {
             </div>
           </div>
 
-          <div className="flex justify-end mb-8">
+          <div className="flex justify-end mb-4">
             <button type="button" className="text-xs font-bold text-primary hover:underline">
               Lupa Kata Sandi?
             </button>
           </div>
 
-          <button 
+          {error && (
+            <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 rounded-2xl px-4 py-3 text-sm">
+              <AlertCircle size={18} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <button
             type="button"
-            onClick={() => router.push('/home')}
+            onClick={handleLogin}
             className="w-full h-14 bg-accent-gradient text-white font-extrabold rounded-2xl shadow-lg shadow-accent/30 hover:opacity-90 transition transform active:scale-95"
           >
             Masuk
           </button>
+
+          {/* Akun demo (bisa dihapus di produksi) */}
+          <div className="mt-4 text-[11px] text-text-muted bg-cream/60 border border-divider rounded-2xl px-4 py-3 leading-relaxed">
+            <p className="font-bold text-text-secondary mb-1">Akun demo:</p>
+            <p>Pembeli — <span className="font-semibold">buyer@savebites.com</span> / buyer123</p>
+            <p>Penjual — <span className="font-semibold">seller@savebites.com</span> / seller123</p>
+          </div>
 
           <div className="flex items-center my-8">
             <div className="flex-1 border-t border-divider"></div>

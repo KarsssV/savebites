@@ -1,24 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Star } from 'lucide-react';
+import { useRequireAuth } from '@/lib/auth';
+import { rateOrder } from '@/lib/store';
 
 export default function RatingScreen() {
   const router = useRouter();
-  
+  const session = useRequireAuth('buyer');
+
   // State untuk menyimpan jumlah bintang dan teks ulasan
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
-  const [merchantName, setMerchantName] = useState("Merchant");
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
-      const m = searchParams.get('merchant');
-      if (m) setMerchantName(m);
-    }
-  }, []);
+  if (!session) return null;
+
+  const params = new URLSearchParams(window.location.search);
+  const merchantName = params.get('merchant') || 'Merchant';
+  const orderId = Number(params.get('orderId')) || 0;
+
+  // Simpan penilaian -> penjual langsung tahu (real-time lewat store).
+  const handleSubmit = () => {
+    if (orderId) rateOrder(orderId, rating, review);
+    router.push('/history');
+  };
 
   return (
     <main className="min-h-screen bg-cream flex items-center justify-center md:p-8">
@@ -99,9 +105,9 @@ export default function RatingScreen() {
           ========================================= */}
           <div className="w-full mt-auto flex flex-col gap-3 pb-safe">
             {/* Tombol Kirim: Hanya aktif jika rating > 0 */}
-            <button 
+            <button
               disabled={rating === 0}
-              onClick={() => router.push('/home')}
+              onClick={handleSubmit}
               className={`w-full font-extrabold px-8 py-4 rounded-2xl transition transform active:scale-95 ${
                 rating > 0 
                   ? 'bg-accent-gradient text-white shadow-lg shadow-accent/30 hover:opacity-90' 
@@ -112,8 +118,8 @@ export default function RatingScreen() {
             </button>
             
             {/* Tombol Lewati */}
-            <button 
-              onClick={() => router.push('/home')}
+            <button
+              onClick={() => router.push('/history')}
               className="w-full py-4 text-sm font-bold text-text-secondary hover:text-text-primary transition"
             >
               Lewati
