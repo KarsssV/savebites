@@ -12,10 +12,12 @@ import {
 import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
 import { mockListings, mockMapPins } from '@/data/mockData';
+import { useRequireAuth } from '@/lib/auth';
 
 export default function MapScreen() {
   const router = useRouter();
-  
+  const session = useRequireAuth('buyer');
+
   // State untuk melacak merchant mana yang sedang di-klik di peta dummy
   const [selectedPin, setSelectedPin] = useState<number | null>(1);
 
@@ -26,6 +28,8 @@ export default function MapScreen() {
   });
 
   const activeMerchant = dummyPins.find(p => p.id === selectedPin);
+
+  if (!session) return null;
 
   return (
     <div className="min-h-screen bg-cream flex">

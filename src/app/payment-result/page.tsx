@@ -3,13 +3,17 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, XCircle, QrCode } from 'lucide-react';
+import { useRequireAuth } from '@/lib/auth';
 
 export default function PaymentResultScreen() {
   const router = useRouter();
-  
-  // State sementara untuk keperluan UI/UX Testing. 
+  const session = useRequireAuth('buyer');
+
+  // State sementara untuk keperluan UI/UX Testing.
   // Ubah ke 'false' untuk melihat tampilan Gagal.
   const [isSuccess, setIsSuccess] = useState(true);
+
+  if (!session) return null;
 
   return (
     <main className="min-h-screen bg-cream flex items-center justify-center p-6 md:p-8">

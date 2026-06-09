@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Info } from 'lucide-react';
+import { useRequireAuth } from '@/lib/auth';
+import { cancelOrder } from '@/lib/store';
 
 // Daftar alasan sesuai dengan kode Flutter asli
 const REASONS = [
@@ -16,15 +18,19 @@ const REASONS = [
 
 export default function CancellationScreen() {
   const router = useRouter();
-  
+  const session = useRequireAuth('buyer');
+
   // State untuk menyimpan alasan yang dipilih
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
 
+  if (!session) return null;
+
+  const orderId = Number(new URLSearchParams(window.location.search).get('orderId')) || 0;
+
   const handleCancelOrder = () => {
-    // Simulasi Snackbar / Notifikasi
+    if (orderId) cancelOrder(orderId); // penjual langsung tahu (real-time)
     alert('Pesanan berhasil dibatalkan');
-    // Navigasi kembali ke Beranda
-    router.push('/home');
+    router.push('/history');
   };
 
   return (

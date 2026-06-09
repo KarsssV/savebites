@@ -1,46 +1,69 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { Home, Map as MapIcon, Plus, Receipt, User } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { Home, Map as MapIcon, Plus, Receipt, User, LayoutDashboard } from 'lucide-react';
+import { useSession } from '@/lib/auth';
 
-export default function BottomNav({ activeIndex }: { activeIndex: number }) {
+export default function BottomNav(_props: { activeIndex?: number }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const session = useSession();
+  const isSeller = session?.role === 'seller';
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50">
       <div className="flex justify-around items-center px-2 py-3 pb-safe">
-        <NavItem 
-          icon={<Home size={24} />} 
-          label="Beranda" 
-          isActive={activeIndex === 0} 
-          onClick={() => router.push('/home')} 
-        />
-        <NavItem 
-          icon={<MapIcon size={24} />} 
-          label="Peta" 
-          isActive={activeIndex === 1} 
-          onClick={() => router.push('/map')} 
-        />
-        
-        <button 
-          onClick={() => router.push('/post-food')}
-          className="w-14 h-14 bg-[#2E7040] rounded-full flex items-center justify-center text-white shadow-lg shadow-primary/40 -mt-8 border-4 border-white transform hover:scale-105 transition"
-        >
-          <Plus size={28} />
-        </button>
+        {isSeller ? (
+          <>
+            <NavItem
+              icon={<LayoutDashboard size={24} />}
+              label="Dasbor"
+              isActive={pathname === '/seller'}
+              onClick={() => router.push('/seller')}
+            />
 
-        <NavItem 
-          icon={<Receipt size={24} />} 
-          label="Pesanan" 
-          isActive={activeIndex === 2} 
-          onClick={() => router.push('/history')} 
-        />
-        <NavItem 
-          icon={<User size={24} />} 
-          label="Profil" 
-          isActive={activeIndex === 3} 
-          onClick={() => router.push('/profile')} 
-        />
+            <button
+              onClick={() => router.push('/post-food')}
+              className="w-14 h-14 bg-[#2E7040] rounded-full flex items-center justify-center text-white shadow-lg shadow-primary/40 -mt-8 border-4 border-white transform hover:scale-105 transition"
+            >
+              <Plus size={28} />
+            </button>
+
+            <NavItem
+              icon={<User size={24} />}
+              label="Profil"
+              isActive={pathname === '/profile'}
+              onClick={() => router.push('/profile')}
+            />
+          </>
+        ) : (
+          <>
+            <NavItem
+              icon={<Home size={24} />}
+              label="Beranda"
+              isActive={pathname === '/home'}
+              onClick={() => router.push('/home')}
+            />
+            <NavItem
+              icon={<MapIcon size={24} />}
+              label="Peta"
+              isActive={pathname === '/map'}
+              onClick={() => router.push('/map')}
+            />
+            <NavItem
+              icon={<Receipt size={24} />}
+              label="Pesanan"
+              isActive={pathname === '/history'}
+              onClick={() => router.push('/history')}
+            />
+            <NavItem
+              icon={<User size={24} />}
+              label="Profil"
+              isActive={pathname === '/profile'}
+              onClick={() => router.push('/profile')}
+            />
+          </>
+        )}
       </div>
     </nav>
   );

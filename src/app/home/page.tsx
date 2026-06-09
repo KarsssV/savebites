@@ -13,23 +13,30 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
-import { mockListings } from '@/data/mockData';
+import { useRequireAuth } from '@/lib/auth';
+import { useListings, type Listing } from '@/lib/store';
 
 
 export default function HomeScreen() {
   const router = useRouter();
+  const session = useRequireAuth('buyer');
+  const listings = useListings();
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(0);
 
   const categories = ['Semua', 'Roti & Kue', 'Makanan Berat', 'Minuman', 'Sayur & Buah', 'Snack'];
 
-  const filteredListings = mockListings.filter(item => {
+  const filteredListings = listings.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.merchant.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 0 || item.category === categories[selectedCategory];
     return matchesSearch && matchesCategory;
   });
+
+  if (!session) return null; // menunggu/redirect login
+
+  const firstName = session.name.split(' ')[0];
 
   return (
     <div className="min-h-screen bg-cream flex">
@@ -53,11 +60,11 @@ export default function HomeScreen() {
           {/* Header & Profil */}
           <div className="px-6 pt-12 pb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 border-2 border-white/50 flex items-center justify-center text-white font-bold">
-                S
+              <div className="w-10 h-10 rounded-full bg-white/20 border-2 border-white/50 flex items-center justify-center text-white font-bold uppercase">
+                {session.name.charAt(0)}
               </div>
               <div className="flex flex-col">
-                <span className="text-white/80 text-xs">Selamat datang 👋</span>
+                <span className="text-white/80 text-xs">Halo, {firstName} 👋</span>
                 <button
                   onClick={() => setLocationEnabled(!locationEnabled)}
                   className="flex items-center gap-1 text-white text-sm font-bold hover:text-white/80 transition"
@@ -149,7 +156,7 @@ export default function HomeScreen() {
 }
 
 // --- SUB-KOMPONEN LISTING CARD ---
-function ListingCard({ data, router }: { data: typeof mockListings[0], router: any }) {
+function ListingCard({ data, router }: { data: Listing, router: any }) {
   const formatRupiah = (angka: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
   };

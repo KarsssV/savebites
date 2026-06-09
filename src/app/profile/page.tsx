@@ -13,9 +13,18 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
+import { useRequireAuth, logout } from '@/lib/auth';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const session = useRequireAuth();
+
+  if (!session) return null;
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   return (
     <div className="min-h-screen bg-cream flex">
@@ -33,17 +42,20 @@ export default function ProfileScreen() {
           <div className="flex items-center gap-4">
             {/* Avatar */}
             <div className="w-16 h-16 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
-              <span className="text-2xl font-extrabold text-primary">S</span>
+              <span className="text-2xl font-extrabold text-primary uppercase">{session.name.charAt(0)}</span>
             </div>
-            
+
             {/* Info Pengguna */}
             <div className="flex flex-col">
               <h1 className="text-lg font-extrabold text-text-primary">
-                Sobat Penyelamat
+                {session.name}
               </h1>
               <p className="text-sm text-text-secondary mt-0.5">
-                sobat@savebites.com
+                {session.email}
               </p>
+              <span className="mt-1 w-fit text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                {session.role === 'seller' ? 'Penjual' : 'Pembeli'}
+              </span>
             </div>
           </div>
 
@@ -92,8 +104,8 @@ export default function ProfileScreen() {
 
           {/* Tombol Keluar */}
           <div className="px-6 mt-6 mb-8">
-            <button 
-              onClick={() => router.push('/login')}
+            <button
+              onClick={handleLogout}
               className="w-full flex items-center justify-center gap-2 py-3.5 border-2 border-red-500 rounded-2xl text-red-500 font-extrabold hover:bg-red-50 transition transform active:scale-95"
             >
               <LogOut size={18} />

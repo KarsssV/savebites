@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, 
@@ -11,31 +11,32 @@ import {
   Clock,
   Store
 } from 'lucide-react';
+import { useRequireAuth } from '@/lib/auth';
+import { useListings, addOrder } from '@/lib/store';
 
 export default function CheckoutScreen() {
   const router = useRouter();
-  const [paymentMethod, setPaymentMethod] = useState('Gopay');
-  const [qty, setQty] = useState(1);
+  const session = useRequireAuth('buyer');
+  const listings = useListings();
+  const [paymentMethod] = useState('Gopay');
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
-      const qtyParam = searchParams.get('qty');
-      if (qtyParam) {
-        setQty(parseInt(qtyParam, 10));
-      }
-    }
-  }, []);
+  if (!session) return null;
 
-  // Mock data pesanan
+  // Baca parameter URL (klien saja, aman setelah guard).
+  const params = new URLSearchParams(window.location.search);
+  const listingId = Number(params.get('id')) || (listings[0]?.id ?? 1);
+  const qty = Math.max(1, Number(params.get('qty')) || 1);
+  const listing = listings.find(l => l.id === listingId) ?? listings[0];
+  if (!listing) return null;
+
   const orderData = {
-    title: "Paket Roti Manis Sisa Hari Ini",
-    merchant: "Toko Roti Mawar",
-    merchantLocation: "Jl. Soekarno Hatta No. 12, Malang",
-    distance: "1.2 km",
-    price: 10000,
-    qty: qty,
-    image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=300&q=80"
+    title: listing.title,
+    merchant: listing.merchant,
+    merchantLocation: listing.merchantLocation,
+    distance: listing.distance,
+    price: listing.discountPrice,
+    qty,
+    image: listing.image,
   };
 
   // Kalkulasi biaya
@@ -45,6 +46,18 @@ export default function CheckoutScreen() {
 
   const formatRupiah = (angka: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+  };
+
+  // Buat pesanan -> penjual langsung tahu (real-time lewat store).
+  const handlePay = () => {
+    addOrder({
+      listingId: listing.id,
+      buyerEmail: session.email,
+      buyerName: session.name,
+      sellerEmail: listing.sellerEmail,
+      qty,
+    });
+    router.push('/payment-result');
   };
 
   return (
@@ -174,7 +187,7 @@ export default function CheckoutScreen() {
 
             {/* Tombol Checkout Desktop (Disembunyikan di Mobile) */}
             <button 
-              onClick={() => router.push('/payment-result')}
+              onClick={handlePay}
               className="hidden md:block w-full mt-8 bg-primary-gradient text-white font-extrabold px-8 py-4 rounded-2xl shadow-lg shadow-primary/30 hover:opacity-90 transition transform active:scale-95"
             >
               Bayar Sekarang
@@ -198,7 +211,7 @@ export default function CheckoutScreen() {
           </div>
           
           <button 
-            onClick={() => router.push('/payment-result')}
+            onClick={handlePay}
             className="bg-primary-gradient text-white font-extrabold px-8 py-3.5 rounded-2xl shadow-lg shadow-primary/30 hover:opacity-90 transition transform active:scale-95"
           >
             Bayar
