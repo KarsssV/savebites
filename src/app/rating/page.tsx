@@ -21,8 +21,9 @@ export default function RatingScreen() {
   const orderId = Number(params.get('orderId')) || 0;
 
   // Simpan penilaian -> penjual langsung tahu (real-time lewat store).
-  const handleSubmit = () => {
-    if (orderId) rateOrder(orderId, rating, review);
+  // Ganti handleSubmit menjadi:
+  const handleSubmit = async () => {
+    if (orderId) await rateOrder(orderId, rating, review);
     router.push('/history');
   };
 

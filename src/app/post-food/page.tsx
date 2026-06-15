@@ -91,6 +91,8 @@ export default function PostFoodScreen() {
       discountPrice: Number(form.discountPrice),
       stock: Number(form.stock) || 1,
       timeLeft: form.timeLeft,
+      /* masih belum tau expiredAt yg bener gmn*/
+      expiredAt: new Date(Date.now() + (TIME_OPTIONS.indexOf(form.timeLeft) + 1) * 30 * 60 * 1000).toISOString(),
       category: form.category,
       image: imageForCategory(form.category),
       description: form.description.trim() || 'Makanan surplus yang masih sangat layak konsumsi.',

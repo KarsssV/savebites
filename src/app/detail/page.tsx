@@ -3,18 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowLeft,
-  MapPin,
-  Star,
-  Clock,
-  Heart,
-  Share2,
-  Store,
-  AlertCircle,
-  ShieldCheck
+  ArrowLeft, MapPin, Star, Heart, Share2,
+  Store, AlertCircle, ShieldCheck, Clock
 } from 'lucide-react';
 import { useRequireAuth } from '@/lib/auth';
 import { useListings } from '@/lib/store';
+import { useCountdown } from '@/lib/useCountdown';
+import CountdownBadge from '@/components/CountdownBadge';
 
 export default function DetailScreen() {
   const router = useRouter();
@@ -23,94 +18,119 @@ export default function DetailScreen() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
-  if (!session) return null;
-
-  // Baca parameter URL (klien saja, aman setelah guard).
-  const params = new URLSearchParams(window.location.search);
+  const params = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search)
+    : new URLSearchParams('');
   const listingId = Number(params.get('id')) || (listings[0]?.id ?? 1);
-  const foundListing = listings.find(l => l.id === listingId) || listings[0];
+  const foundListing = listings.find((l) => l.id === listingId) || listings[0];
+
+  // ── Semua hooks sebelum kondisi apapun ──
+  const countdown = useCountdown(foundListing?.expiredAt ?? null);
+
+  if (!session) return null;
   if (!foundListing) return null;
+
   const merchantName = params.get('merchant') || foundListing.merchant;
+  const data = { ...foundListing, merchant: merchantName };
 
-  const data = {
-    ...foundListing,
-    merchant: merchantName,
-    timeLeft: foundListing.timeLeft + " Menit",
-  };
+  // Hitung jam posting dan jam expired
+  const expiredDate = data.expiredAt ? new Date(data.expiredAt) : null;
+  const postedDate = data.expiredAt
+    ? new Date(new Date(data.expiredAt).getTime() - timeLeftToMs(data.timeLeft))
+    : null;
 
-  const formatRupiah = (angka: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
-  };
+  const formatTime = (d: Date) =>
+    d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+  const formatRupiah = (angka: number) =>
+    new Intl.NumberFormat('id-ID', {
+      style: 'currency', currency: 'IDR', minimumFractionDigits: 0,
+    }).format(angka);
+
+  const urgencyColor = {
+    normal: 'text-primary',
+    soon: 'text-amber-600',
+    urgent: 'text-red-500',
+    expired: 'text-gray-400',
+  }[countdown.urgency];
 
   return (
     <main className="min-h-screen bg-gray-50 flex justify-center md:items-center md:p-8">
-
-      {/* Container Utama Responsif */}
       <div className="w-full h-full min-h-screen md:min-h-0 md:h-[600px] md:max-h-[85vh] md:max-w-5xl bg-white md:rounded-[2rem] md:shadow-2xl overflow-hidden flex flex-col md:flex-row relative">
 
-        {/* =========================================
-            BAGIAN GAMBAR (KIRI di Desktop, ATAS di HP)
-        ========================================= */}
+        {/* GAMBAR */}
         <div className="relative w-full h-[350px] md:h-full md:w-1/2">
-          <img
-            src={data.image}
-            alt={data.title}
-            className="w-full h-full object-cover"
-          />
+          <img src={data.image} alt={data.title} className="w-full h-full object-cover" />
 
-          {/* Gradient Overlay Atas (Untuk visibilitas tombol back) */}
           <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/60 to-transparent" />
 
-          {/* Tombol Aksi Melayang */}
-          <div className="absolute top-0 left-0 right-0 p-4 md:p-6 flex justify-between items-center z-10 pb-safe-top">
-            <button
-              onClick={() => router.back()}
-              className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/40 transition"
-            >
+          <div className="absolute top-0 left-0 right-0 p-4 md:p-6 flex justify-between items-center z-10">
+            <button onClick={() => router.back()}
+              className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/40 transition">
               <ArrowLeft size={20} />
             </button>
             <div className="flex gap-3">
               <button className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/40 transition">
                 <Share2 size={20} />
               </button>
-              <button
-                onClick={() => setIsFavorite(!isFavorite)}
-                className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/40 transition"
-              >
-                <Heart size={20} className={isFavorite ? "fill-red-500 text-red-500" : ""} />
+              <button onClick={() => setIsFavorite(!isFavorite)}
+                className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/40 transition">
+                <Heart size={20} className={isFavorite ? 'fill-red-500 text-red-500' : ''} />
               </button>
             </div>
           </div>
 
-          {/* Badge Status Makanan */}
+          {/* Badge countdown di gambar */}
           <div className="absolute bottom-6 left-4 flex gap-2">
-            <div className="bg-accent px-3 py-1.5 rounded-lg text-xs font-black text-white shadow-lg flex items-center gap-1.5">
-              <Clock size={14} /> Sisa {data.timeLeft}
-            </div>
+            <CountdownBadge expiredAt={data.expiredAt} size="md" />
             <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-black text-primary shadow-lg">
               Stok: {data.stock} Porsi
             </div>
           </div>
         </div>
 
-        {/* =========================================
-            BAGIAN KONTEN DETAIL (KANAN di Desktop, BAWAH di HP)
-        ========================================= */}
+        {/* KONTEN DETAIL */}
         <div className="w-full md:w-1/2 bg-white rounded-t-3xl md:rounded-none -mt-6 md:mt-0 relative z-10 flex flex-col h-full">
-
-          {/* Area Scrollable Content */}
           <div className="p-6 md:p-8 flex-1 overflow-y-auto pb-32 md:pb-32">
 
-            {/* Header Info */}
-            <div className="mb-6">
+            {/* Rating & Judul */}
+            <div className="mb-4">
               <div className="flex items-center gap-1 text-sm font-bold text-text-primary mb-2">
                 <Star size={16} className="fill-yellow-400 text-yellow-400" />
                 <span>{data.rating}</span>
                 <span className="text-text-muted font-normal">({data.reviews} ulasan)</span>
               </div>
-              <h1 className="text-2xl font-extrabold text-text-primary leading-tight mb-2">
+              <h1 className="text-2xl font-extrabold text-text-primary leading-tight mb-3">
                 {data.title}
               </h1>
+
+              {/* Info waktu posting & expired */}
+              {expiredDate && (
+                <div className={`flex items-center gap-2 text-sm font-bold ${urgencyColor} bg-gray-50 rounded-2xl px-4 py-3`}>
+                  <Clock size={16} className="shrink-0" />
+                  <div className="flex flex-col">
+                    {countdown.isExpired ? (
+                      <span>Waktu pengambilan telah berakhir</span>
+                    ) : (
+                      <>
+                        <span>
+                          Tersedia sampai{' '}
+                          <span className="font-black">{formatTime(expiredDate)}</span>
+                          {' '}WIB
+                        </span>
+                        {postedDate && (
+                          <span className="text-[11px] text-text-muted font-normal mt-0.5">
+                            Diposting pukul {formatTime(postedDate)} •{' '}
+                            <span className={`font-bold ${urgencyColor}`}>
+                              Sisa {countdown.label}
+                            </span>
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Merchant Card */}
@@ -132,25 +152,26 @@ export default function DetailScreen() {
             {/* Deskripsi */}
             <div className="mb-6">
               <h3 className="font-bold text-text-primary mb-2">Deskripsi Makanan</h3>
-              <p className="text-sm text-text-secondary leading-relaxed">
-                {data.description}
-              </p>
+              <p className="text-sm text-text-secondary leading-relaxed">{data.description}</p>
             </div>
 
-            {/* Allergen Info */}
-            <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 mb-6 flex gap-3">
-              <AlertCircle size={20} className="text-accent shrink-0" />
-              <div>
-                <h4 className="font-bold text-accent text-sm mb-1">Informasi Alergen</h4>
-                <p className="text-xs text-orange-800">Mengandung: {data.allergens.join(", ")}</p>
+            {/* Alergen */}
+            {data.allergens.length > 0 && (
+              <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 mb-6 flex gap-3">
+                <AlertCircle size={20} className="text-accent shrink-0" />
+                <div>
+                  <h4 className="font-bold text-accent text-sm mb-1">Informasi Alergen</h4>
+                  <p className="text-xs text-orange-800">Mengandung: {data.allergens.join(', ')}</p>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Kualitas Terjamin */}
+            {/* Kualitas */}
             <div className="flex items-start gap-3 text-sm text-text-secondary mb-6">
               <ShieldCheck size={24} className="text-primary shrink-0" />
               <p className="text-xs leading-relaxed">
-                <span className="font-bold text-text-primary">Kualitas Terjamin.</span> Makanan ini masih sangat layak konsumsi dan belum melewati masa kedaluwarsa.
+                <span className="font-bold text-text-primary">Kualitas Terjamin.</span>{' '}
+                Makanan ini masih sangat layak konsumsi dan belum melewati masa kedaluwarsa.
               </p>
             </div>
 
@@ -161,27 +182,20 @@ export default function DetailScreen() {
                 <span className="text-xs text-text-muted">Maksimal {data.stock} porsi</span>
               </div>
               <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-8 h-8 rounded-full bg-white border border-divider flex items-center justify-center text-text-primary font-bold hover:bg-gray-100 transition"
-                >
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-8 h-8 rounded-full bg-white border border-divider flex items-center justify-center font-bold hover:bg-gray-100 transition">
                   -
                 </button>
                 <span className="font-bold text-primary w-4 text-center">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(Math.min(data.stock, quantity + 1))}
-                  className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold hover:opacity-90 transition"
-                >
+                <button onClick={() => setQuantity(Math.min(data.stock, quantity + 1))}
+                  className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold hover:opacity-90 transition">
                   +
                 </button>
               </div>
             </div>
           </div>
 
-          {/* =========================================
-              BOTTOM CHECKOUT BAR
-              (Fixed di HP, Nempel di bawah container di Desktop)
-          ========================================= */}
+          {/* BOTTOM CHECKOUT BAR */}
           <div className="fixed md:absolute bottom-0 left-0 right-0 w-full bg-white border-t border-divider px-6 py-4 pb-safe flex items-center justify-between z-50">
             <div className="flex flex-col">
               <span className="text-xs font-bold text-text-muted line-through mb-0.5">
@@ -191,17 +205,26 @@ export default function DetailScreen() {
                 {formatRupiah(data.discountPrice * quantity)}
               </span>
             </div>
-
             <button
+              disabled={countdown.isExpired}
               onClick={() => router.push(`/checkout?id=${data.id}&qty=${quantity}`)}
-              className="bg-accent-gradient text-white font-extrabold px-8 py-3.5 rounded-2xl shadow-lg shadow-accent/30 hover:opacity-90 transition transform active:scale-95"
+              className="bg-accent-gradient text-white font-extrabold px-8 py-3.5 rounded-2xl shadow-lg shadow-accent/30 hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Selamatkan!
+              {countdown.isExpired ? 'Sudah Habis' : 'Selamatkan!'}
             </button>
           </div>
-
         </div>
       </div>
     </main>
   );
+}
+
+// Helper: konversi timeLeft string → milliseconds
+function timeLeftToMs(timeLeft: string): number {
+  if (timeLeft.includes('30')) return 30 * 60 * 1000;
+  if (timeLeft.includes('1 Jam')) return 60 * 60 * 1000;
+  if (timeLeft.includes('2 Jam')) return 2 * 60 * 60 * 1000;
+  if (timeLeft.includes('3 Jam')) return 3 * 60 * 60 * 1000;
+  if (timeLeft.includes('4 Jam')) return 4 * 60 * 60 * 1000;
+  return 60 * 60 * 1000;
 }

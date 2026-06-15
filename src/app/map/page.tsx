@@ -1,148 +1,298 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  ArrowLeft, 
-  Search, 
-  MapPin, 
-  Star,
-  Navigation
-} from 'lucide-react';
+import { ArrowLeft, Search, MapPin, Store, Navigation } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
-import { mockListings, mockMapPins } from '@/data/mockData';
 import { useRequireAuth } from '@/lib/auth';
+import {
+  getSellerLocations,
+  useListings,
+  getProfile,
+  type SellerLocation
+} from '@/lib/store';
+import { supabase } from '@/lib/supabase';
+import dynamic from 'next/dynamic';
+
+// Leaflet harus di-import secara dynamic karena tidak support SSR
+const MapContainer = dynamic(
+  () => import('react-leaflet').then((m) => m.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import('react-leaflet').then((m) => m.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import('react-leaflet').then((m) => m.Marker),
+  { ssr: false }
+);
+const Popup = dynamic(
+  () => import('react-leaflet').then((m) => m.Popup),
+  { ssr: false }
+);
 
 export default function MapScreen() {
   const router = useRouter();
   const session = useRequireAuth('buyer');
+  const listings = useListings();
 
-  // State untuk melacak merchant mana yang sedang di-klik di peta dummy
-  const [selectedPin, setSelectedPin] = useState<number | null>(1);
+  const [sellers, setSellers] = useState<SellerLocation[]>([]);
+const [selected, setSelected] = useState<SellerLocation | null>(null);
+const [search, setSearch] = useState('');
+const [isClient, setIsClient] = useState(false);
 
-  // Enrich pins with listing data
-  const dummyPins = mockMapPins.map(pin => {
-    const listing = mockListings.find(l => l.id === pin.listingId)!;
-    return { ...pin, name: listing.merchant, distance: listing.distance, rating: listing.rating, stock: listing.stock, listingId: pin.listingId };
-  });
+const [buyerLocation, setBuyerLocation] = useState<{
+  lat: number;
+  lng: number;
+} | null>(null);
 
-  const activeMerchant = dummyPins.find(p => p.id === selectedPin);
+  useEffect(() => {
+    setIsClient(true);
+
+    getSellerLocations().then(setSellers);
+
+    const loadBuyerLocation = async () => {
+      const { data } = await supabase.auth.getUser();
+
+      if (!data.user) return;
+
+      const profile = await getProfile(data.user.id);
+
+      if (profile?.lat && profile?.lng) {
+        setBuyerLocation({
+          lat: profile.lat,
+          lng: profile.lng,
+        });
+      }
+    };
+
+    loadBuyerLocation();
+  }, []);
 
   if (!session) return null;
+
+  const filtered = sellers.filter((s) =>
+    s.name.toLowerCase().includes(search.toLowerCase()) ||
+    s.address.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Listing milik seller yang dipilih
+  const sellerListings = selected
+    ? listings.filter((l) => l.merchant === selected.name)
+    : [];
+
+  // Pusat peta: Surabaya sebagai default
+  const center: [number, number] = [-7.250445, 112.768845];
 
   return (
     <div className="min-h-screen bg-cream flex">
       <Sidebar activeIndex={1} />
 
-      <main className="flex-1 md:ml-64 w-full relative h-screen bg-gray-100 overflow-hidden">
-      
-      {/* Container utama */}
-      <div className="w-full h-full flex flex-col relative">
-        
-        {/* =========================================
-            BACKGROUND PETA DUMMY
-        ========================================= */}
-        <div className="absolute inset-0 z-0">
-          {/* Gambar ini adalah ilustrasi peta kota. Kamu bisa ganti dengan gambar peta aslimu nanti */}
-          <img 
-            src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80" 
-            alt="Map Background" 
-            className="w-full h-full object-cover opacity-80"
-          />
-          {/* Lapisan agak pudar agar UI di atasnya lebih terbaca */}
-          <div className="absolute inset-0 bg-cream/40 backdrop-blur-[1px]"></div>
-        </div>
+      <main className="flex-1 md:ml-64 w-full relative h-screen overflow-hidden">
+        <div className="w-full h-full flex flex-col">
 
-        {/* =========================================
-            HEADER & SEARCH BARS (Mengambang di atas peta)
-        ========================================= */}
-        <div className="relative z-10 px-6 pt-12 md:pt-8 pb-4 bg-gradient-to-b from-black/50 to-transparent">
-          <div className="flex gap-3 items-center">
-            <button 
-              onClick={() => router.push('/home')}
-              className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-text-primary hover:bg-gray-50 transition shrink-0"
-            >
-              <ArrowLeft size={24} />
-            </button>
-            <div className="flex-1 bg-white rounded-2xl shadow-lg flex items-center px-4 h-12">
-              <Search size={20} className="text-text-muted mr-3" />
-              <input 
-                type="text"
-                placeholder="Cari lokasi terdekat..."
-                className="bg-transparent w-full focus:outline-none text-sm text-text-primary placeholder:text-text-muted"
+          {/* Search Bar */}
+          <div className="absolute top-0 left-0 right-0 z-[1000] px-6 pt-12 md:pt-6 pb-4 bg-gradient-to-b from-black/50 to-transparent">
+            <div className="flex gap-3 items-center">
+              <button
+                onClick={() => router.push('/home')}
+                className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-text-primary hover:bg-gray-50 transition shrink-0"
+              >
+                <ArrowLeft size={24} />
+              </button>
+              <div className="flex-1 bg-white rounded-2xl shadow-lg flex items-center px-4 h-12">
+                <Search size={20} className="text-text-muted mr-3 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Cari merchant atau alamat..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="bg-transparent w-full focus:outline-none text-sm text-text-primary placeholder:text-text-muted"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Peta Leaflet */}
+          {isClient && (
+            <div className="w-full h-full">
+              <LeafletMap
+                center={
+                  buyerLocation
+                    ? [buyerLocation.lat, buyerLocation.lng]
+                    : center
+                }
+                sellers={filtered}
+                onSelect={setSelected}
+                selected={selected}
+                buyerLocation={buyerLocation}
               />
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* =========================================
-            PIN MARKERS DUMMY
-        ========================================= */}
-        {dummyPins.map((pin) => (
-          <button
-            key={pin.id}
-            onClick={() => setSelectedPin(pin.id)}
-            style={{ top: pin.top, left: pin.left }}
-            className={`absolute z-20 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${
-              selectedPin === pin.id ? 'scale-125' : 'scale-100 hover:scale-110'
-            }`}
-          >
-            <div className={`relative flex flex-col items-center ${selectedPin === pin.id ? 'text-accent' : 'text-primary'}`}>
-              <MapPin size={36} className="drop-shadow-lg fill-white" />
-              {/* Indikator Stok di atas Pin */}
-              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
-                {pin.stock}
-              </div>
-            </div>
-          </button>
-        ))}
-
-        {/* Pin Lokasi User (Biru) */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
-          <div className="w-6 h-6 bg-blue-500 border-4 border-white rounded-full shadow-lg animate-pulse"></div>
-        </div>
-
-        {/* =========================================
-            BOTTOM SHEET (Detail Merchant Terpilih)
-        ========================================= */}
-        {activeMerchant && (
-          <div className="absolute bottom-[90px] left-0 right-0 px-6 z-30 transition-transform duration-300 animate-slide-up">
-            <div className="bg-white rounded-3xl p-5 shadow-2xl border border-divider">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="text-lg font-extrabold text-text-primary">{activeMerchant.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="flex items-center gap-1 text-xs font-bold text-text-primary">
-                      <Star size={14} className="fill-yellow-400 text-yellow-400" />
-                      {activeMerchant.rating}
-                    </span>
-                    <span className="text-xs text-text-muted">• {activeMerchant.distance}</span>
+          {/* Bottom Sheet: Seller terpilih */}
+          {selected && (
+            <div className="absolute bottom-[80px] md:bottom-4 left-4 right-4 z-[1000] animate-slide-up">
+              <div className="bg-white rounded-3xl p-5 shadow-2xl border border-divider">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0">
+                      <Store size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-text-primary">{selected.name}</h3>
+                      <p className="text-xs text-text-secondary mt-0.5 flex items-center gap-1">
+                        <MapPin size={11} /> {selected.address}
+                      </p>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="text-text-muted hover:text-text-primary text-lg font-bold px-2"
+                  >
+                    ×
+                  </button>
                 </div>
-                <div className="bg-primary/10 px-3 py-1.5 rounded-lg text-xs font-black text-primary">
-                  {activeMerchant.stock} Tersedia
-                </div>
+
+                {/* Daftar listing seller */}
+                {sellerListings.length > 0 && (
+                  <div className="flex gap-3 overflow-x-auto pb-2 mb-4 hide-scrollbar">
+                    {sellerListings.map((l) => (
+                      <div
+                        key={l.id}
+                        onClick={() => router.push(`/detail?id=${l.id}`)}
+                        className="shrink-0 w-32 cursor-pointer"
+                      >
+                        <img
+                          src={l.image}
+                          alt={l.title}
+                          className="w-32 h-20 object-cover rounded-xl mb-1"
+                        />
+                        <p className="text-xs font-bold text-text-primary line-clamp-2 leading-tight">
+                          {l.title}
+                        </p>
+                        <p className="text-xs font-black text-primary mt-0.5">
+                          Rp {l.discountPrice.toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    if (sellerListings[0]) {
+                      router.push(`/detail?id=${sellerListings[0].id}`);
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/30 hover:opacity-90 transition"
+                >
+                  <Navigation size={16} />
+                  Lihat Semua Makanan
+                </button>
               </div>
-              
-              <button 
-                onClick={() => router.push(`/detail?id=${activeMerchant.listingId}&merchant=${encodeURIComponent(activeMerchant.name)}`)}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/30 hover:opacity-90 transition transform active:scale-95 mt-2"
-              >
-                <Navigation size={18} />
-                Lihat Makanan
-              </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* =========================================
-            BOTTOM NAVIGATION BAR
-        ========================================= */}
-        <BottomNav activeIndex={1} />
-
-      </div>
-    </main>
+          <BottomNav activeIndex={1} />
+        </div>
+      </main>
     </div>
+  );
+}
+
+// Komponen peta terpisah agar import leaflet CSS bisa dilakukan di sini
+function LeafletMap({
+  center,
+  sellers,
+  onSelect,
+  selected,
+  buyerLocation,
+}: {
+  center: [number, number];
+  sellers: SellerLocation[];
+  onSelect: (s: SellerLocation) => void;
+  selected: SellerLocation | null;
+  buyerLocation: {
+    lat: number;
+    lng: number;
+  } | null;
+}) {
+  useEffect(() => {
+    // Import CSS Leaflet secara dinamis
+    import('leaflet/dist/leaflet.css' as never);
+
+    // Fix ikon marker default Leaflet yang hilang di Next.js
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const L = require('leaflet');
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
+  }, []);
+
+  const buyerIcon =
+  typeof window !== 'undefined'
+    ? require('leaflet').divIcon({
+        className: '',
+        html: `
+          <div style="
+            width:16px;
+            height:16px;
+            background:#3B82F6;
+            border:3px solid white;
+            border-radius:50%;
+            box-shadow:0 2px 8px rgba(0,0,0,0.3);
+          "></div>
+        `,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      })
+    : null;
+
+  return (
+    <MapContainer
+      center={center}
+      zoom={14}
+      style={{ width: '100%', height: '100%' }}
+      zoomControl={false}
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      {sellers.map((seller) => (
+        <Marker
+          key={seller.id}
+          position={[seller.lat, seller.lng]}
+          eventHandlers={{ click: () => onSelect(seller) }}
+        >
+          <Popup>
+            <div className="text-sm font-bold">{seller.name}</div>
+            <div className="text-xs text-gray-500">{seller.address}</div>
+          </Popup>
+        </Marker>
+      ))}
+
+      {buyerLocation && buyerIcon && (
+        <Marker
+          position={[
+            buyerLocation.lat,
+            buyerLocation.lng,
+          ]}
+          icon={buyerIcon}
+        >
+          <Popup>
+            <div className="text-sm font-bold">
+              Lokasi Kamu
+            </div>
+          </Popup>
+        </Marker>
+      )}
+    </MapContainer>
   );
 }
