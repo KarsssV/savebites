@@ -27,8 +27,9 @@ export default function CancellationScreen() {
 
   const orderId = Number(new URLSearchParams(window.location.search).get('orderId')) || 0;
 
-  const handleCancelOrder = () => {
-    if (orderId) cancelOrder(orderId); // penjual langsung tahu (real-time)
+  // Ganti handleCancelOrder menjadi:
+  const handleCancelOrder = async () => {
+    if (orderId) await cancelOrder(orderId);
     alert('Pesanan berhasil dibatalkan');
     router.push('/history');
   };

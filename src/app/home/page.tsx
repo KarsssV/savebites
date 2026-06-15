@@ -15,6 +15,7 @@ import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
 import { useRequireAuth } from '@/lib/auth';
 import { useListings, type Listing } from '@/lib/store';
+import CountdownBadge from '@/components/CountdownBadge';
 
 
 export default function HomeScreen() {
@@ -168,12 +169,19 @@ function ListingCard({ data, router }: { data: Listing, router: any }) {
     >
       <div className="relative w-full h-28 md:h-36 rounded-xl overflow-hidden mb-3">
         <img src={data.image} alt={data.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-        <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-black text-accent shadow-sm">
-          Sisa {data.stock}
-        </div>
-        <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-bold text-white flex items-center gap-1">
-          <Clock size={10} />
-          {data.timeLeft}
+          <div className="absolute top-2 left-2">
+            <div className={`backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-black shadow-sm ${
+              data.stock <= 1
+                ? 'bg-red-500/90 text-white'
+                : data.stock <= 3
+                ? 'bg-amber-500/90 text-white'
+                : 'bg-white/90 text-accent'
+            }`}>
+              Sisa {data.stock}
+            </div>
+          </div>
+        <div className="absolute bottom-2 right-2">
+          <CountdownBadge expiredAt={data.expiredAt} />
         </div>
       </div>
       <div className="flex items-center justify-between mb-1">

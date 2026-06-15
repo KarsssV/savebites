@@ -18,7 +18,8 @@ export default function SignupScreen() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
 
-  const handleSignup = () => {
+  // Ganti fungsi handleSignup menjadi:
+  const handleSignup = async () => {
     if (!name.trim() || !email.trim() || !password) {
       setError('Lengkapi semua kolom terlebih dahulu.');
       return;
@@ -31,7 +32,7 @@ export default function SignupScreen() {
       setError('Konfirmasi kata sandi tidak cocok.');
       return;
     }
-    const session = register({ name: name.trim(), email, password, role });
+    const session = await register({ name: name.trim(), email, password, role });
     if (!session) {
       setError('Email sudah terdaftar. Coba masuk.');
       return;

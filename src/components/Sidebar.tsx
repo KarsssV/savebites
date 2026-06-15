@@ -8,7 +8,7 @@ type Item = { icon: LucideIcon; label: string; href: string };
 
 const BUYER_ITEMS: Item[] = [
   { icon: Home, label: 'Beranda', href: '/home' },
-  { icon: Map, label: 'Peta Lokasi', href: '/map' },
+  { icon: Map, label: 'Merchant Terdekat', href: '/map' },
   { icon: Receipt, label: 'Riwayat Pesanan', href: '/history' },
   { icon: User, label: 'Profil Saya', href: '/profile' },
 ];

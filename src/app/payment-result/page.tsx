@@ -1,41 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, XCircle, QrCode } from 'lucide-react';
+import { CheckCircle2, XCircle, Copy, Check } from 'lucide-react';
 import { useRequireAuth } from '@/lib/auth';
 
 export default function PaymentResultScreen() {
   const router = useRouter();
   const session = useRequireAuth('buyer');
 
-  // State sementara untuk keperluan UI/UX Testing.
-  // Ubah ke 'false' untuk melihat tampilan Gagal.
-  const [isSuccess, setIsSuccess] = useState(true);
+  const [isSuccess] = useState(true);
+  const [code, setCode] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const savedCode = sessionStorage.getItem('savebites:last_order_code');
+    if (savedCode) setCode(savedCode);
+  }, []);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   if (!session) return null;
 
   return (
     <main className="min-h-screen bg-cream flex items-center justify-center p-6 md:p-8">
-      
-      {/* Container utama: 
-          Lebar maksimal diset agar menyerupai 'Card/Modal' yang rapi di tengah layar Desktop,
-          namun tetap responsif merenggang di HP.
-      */}
       <div className="w-full max-w-md bg-white rounded-[2.5rem] p-8 shadow-2xl border border-divider flex flex-col items-center text-center relative overflow-hidden">
-        
-        {/* =========================================
-            TOMBOL RAHASIA UNTUK TESTING (Bisa Dihapus Nanti)
-        ========================================= */}
-        <button 
-          onClick={() => setIsSuccess(!isSuccess)}
-          className="absolute top-4 right-4 text-[10px] bg-gray-100 text-text-muted px-2 py-1 rounded-md hover:bg-gray-200 transition"
-        >
-          Toggle Status
-        </button>
 
-        <div className="flex-1 flex flex-col items-center justify-center w-full mt-8">
-          
+        <div className="flex-1 flex flex-col items-center justify-center w-full mt-4">
+
           {/* Ikon Status */}
           <div className={`w-28 h-28 rounded-full flex items-center justify-center mb-8 shadow-inner ${
             isSuccess ? 'bg-primary/10' : 'bg-red-50'
@@ -47,62 +43,52 @@ export default function PaymentResultScreen() {
             )}
           </div>
 
-          {/* Judul & Subjudul */}
           <h1 className="text-2xl font-extrabold text-text-primary mb-3">
-            {isSuccess ? 'Pembayaran Berhasil!' : 'Pembayaran Gagal'}
+            Pembayaran Berhasil!
           </h1>
-          
+
           <p className="text-sm text-text-secondary leading-relaxed mb-8 px-4">
-            {isSuccess 
-              ? 'Hore! Makananmu berhasil diselamatkan. Tunjukkan QR Code ini ke kasir merchant ya.' 
-              : 'Aduh, pembayaranmu gagal diproses. Coba pakai metode lain yuk.'}
+            Tunjukkan kode ini ke penjual saat mengambil makananmu.
           </p>
 
-          {/* =========================================
-              KODE QR (Hanya Tampil Jika Berhasil)
-          ========================================= */}
-          {isSuccess && (
-            <div className="w-full bg-cream/30 border border-divider rounded-2xl p-6 flex flex-col items-center mb-8">
-              <QrCode size={120} className="text-text-primary mb-4" />
-              <div className="bg-primary/10 px-4 py-2 rounded-xl">
-                <span className="text-sm font-black tracking-widest text-primary">
-                  KODE: SVB-883921
+          {/* Kode Konfirmasi */}
+          {code && (
+            <div className="w-full bg-cream/50 border-2 border-dashed border-primary/30 rounded-2xl p-6 flex flex-col items-center mb-8 gap-4">
+              <p className="text-xs font-bold text-text-muted uppercase tracking-widest">
+                Kode Pengambilan
+              </p>
+              <div className="flex items-center gap-4">
+                <span className="text-4xl font-black tracking-[0.3em] text-primary">
+                  {code}
                 </span>
+                <button
+                  onClick={handleCopy}
+                  className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary hover:bg-primary/20 transition"
+                >
+                  {copied ? <Check size={18} /> : <Copy size={18} />}
+                </button>
               </div>
+              <p className="text-xs text-text-muted">
+                Kode ini hanya berlaku untuk pesanan ini
+              </p>
             </div>
           )}
-
         </div>
 
-        {/* =========================================
-            TOMBOL AKSI BAWAH
-        ========================================= */}
-        <div className="w-full mt-auto flex flex-col gap-3">
-          {isSuccess ? (
-            <button 
-              onClick={() => router.push('/home')}
-              className="w-full bg-accent-gradient text-white font-extrabold px-8 py-4 rounded-2xl shadow-lg shadow-accent/30 hover:opacity-90 transition transform active:scale-95"
-            >
-              Kembali ke Beranda
-            </button>
-          ) : (
-            <>
-              <button 
-                onClick={() => router.back()} // Asumsi kembali ke halaman Checkout
-                className="w-full bg-accent-gradient text-white font-extrabold px-8 py-4 rounded-2xl shadow-lg shadow-accent/30 hover:opacity-90 transition transform active:scale-95"
-              >
-                Coba Lagi
-              </button>
-              <button 
-                onClick={() => router.push('/home')}
-                className="w-full bg-white border-2 border-divider text-text-secondary font-extrabold px-8 py-4 rounded-2xl hover:bg-gray-50 transition transform active:scale-95"
-              >
-                Kembali ke Beranda
-              </button>
-            </>
-          )}
+        <div className="w-full mt-4 flex flex-col gap-3">
+          <button
+            onClick={() => router.push('/history')}
+            className="w-full bg-primary text-white font-extrabold px-8 py-4 rounded-2xl shadow-lg shadow-primary/30 hover:opacity-90 transition transform active:scale-95"
+          >
+            Lihat Pesanan
+          </button>
+          <button
+            onClick={() => router.push('/home')}
+            className="w-full bg-white border-2 border-divider text-text-secondary font-extrabold px-8 py-4 rounded-2xl hover:bg-gray-50 transition"
+          >
+            Kembali ke Beranda
+          </button>
         </div>
-
       </div>
     </main>
   );

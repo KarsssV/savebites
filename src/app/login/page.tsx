@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSession } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-import { login, getSession, homeFor } from '@/lib/auth';
+// import { login, getSession, homeFor } from '@/lib/auth';
+import { login, homeFor } from '@/lib/auth';
+
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -14,13 +17,27 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
 
   // Jika sudah login, langsung ke halaman sesuai peran.
-  useEffect(() => {
-    const s = getSession();
-    if (s) router.replace(homeFor(s.role));
-  }, [router]);
+  // useEffect(() => {
+  //   const checkSession = async () => {
+  //     const s = await getSession();
 
-  const handleLogin = () => {
-    const session = login(email, password);
+  //     if (s) {
+  //       router.replace(homeFor(s.role));
+  //     }
+  //   };
+
+  //   checkSession();
+  // }, [router]);
+
+  // Ganti dengan ini — gunakan useSession yang reaktif:
+  const existingSession = useSession();
+  useEffect(() => {
+    if (existingSession) router.replace(homeFor(existingSession.role));
+  }, [existingSession, router]);
+
+  // Ganti fungsi handleLogin menjadi:
+  const handleLogin = async () => {
+    const session = await login(email, password);
     if (!session) {
       setError('Email atau kata sandi salah.');
       return;
@@ -154,7 +171,6 @@ export default function LoginScreen() {
               Daftar Sekarang
             </Link>
           </div>
-
         </div>
       </div>
     </main>
